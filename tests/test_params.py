@@ -31,6 +31,16 @@ def test_inconsistent_quantiles_raise():
         DistributionSpec(family="lognormal", quantiles={0.05: 0.9, 0.5: 0.1, 0.95: 0.2})
 
 
+def test_family_inconsistent_lognormal_raises():
+    # Monotone, but not representable as a 2-parameter lognormal: a huge 95th
+    # must not hide a 5th/50th miss (GOAL §4.3 fail-loud).
+    with pytest.raises(ValueError):
+        DistributionSpec(
+            family="lognormal",
+            quantiles={0.05: 1.0, 0.5: 1.0001, 0.95: 1000.0},
+        )
+
+
 def test_moments_only_rejected():
     with pytest.raises(ValueError):
         DistributionSpec(family="normal", fitted_params={"mean": 0.0, "sd": 1.0})

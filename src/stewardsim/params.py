@@ -21,10 +21,9 @@ Family = Literal[
 ]
 
 _Z95 = float(stats.norm.ppf(0.95))
-_REL_RESIDUAL_LIMIT = 0.25
-_QUANTILE_FAMILIES = frozenset(
-    {"lognormal", "beta", "gamma", "normal", "triangular"}
-)
+# Max relative |ppf(p) - q_p| / |q_p|. RMSE/span collapses to the widest
+# quantile and hides family-inconsistent left-tail error (GOAL §4.3).
+_MAX_REL_QUANTILE_ERROR = 0.25
 
 
 class Provenance(str, Enum):
@@ -187,11 +186,12 @@ def _fit_by_quantile_loss(
         )
 
     residual = _pinball_loss(pred, values, probs)
-    rmse = float(np.sqrt(np.mean((pred - values) ** 2)))
-    span = max(float(np.ptp(values)), float(np.max(np.abs(values))), 1e-12)
-    if rmse / span > _REL_RESIDUAL_LIMIT:
+    rel = np.abs(pred - values) / np.maximum(np.abs(values), 1e-12)
+    if float(np.max(rel)) > _MAX_REL_QUANTILE_ERROR:
         raise ValueError(
-            f"quantiles inconsistent with family={family!r}: residual={residual:.6g}"
+            f"quantiles inconsistent with family={family!r}: "
+            f"max relative quantile error={float(np.max(rel)):.6g} "
+            f"(limit {_MAX_REL_QUANTILE_ERROR})"
         )
     return fitted, residual
 
