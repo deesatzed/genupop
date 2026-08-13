@@ -1,13 +1,54 @@
-"""Determinant frequency maps (GOAL.md §6.1, AT-1/2/3/4/7).
+"""Determinant type and frequency maps (GOAL.md §4.2, §6.1, AT-1/2/3/4/7).
 
 Deterministic haploid/genic selection plus diploid Wright–Fisher sampling.
 Selection coefficient and fitness cost are function arguments, not hidden
-constants. HGT and compensation are not implemented here.
+constants. HGT and compensation exist on the type; they are unused here.
 """
 
 from __future__ import annotations
 
+from typing import Literal
+
 import numpy as np
+from pydantic import BaseModel, ConfigDict, model_validator
+
+from stewardsim.params import Parameter
+
+Mechanism = Literal[
+    "chromosomal_mutation",
+    "plasmid",
+    "efflux",
+    "enzymatic",
+    "target_mod",
+]
+Acquisition = Literal["de_novo", "horizontal", "imported"]
+
+
+class Determinant(BaseModel):
+    """Resistance determinant (GOAL §4.2).
+
+    Slice-0 required fields: ``id``, ``confers_resistance_to``,
+    ``fitness_cost``. ``mechanism``, ``compensatable``,
+    ``compensation_rate``, ``acquisition``, and ``hgt_rate`` exist on the
+    type; Slice-0 dynamics do not use HGT or compensation.
+    """
+
+    id: str
+    confers_resistance_to: list[str]
+    fitness_cost: Parameter
+    mechanism: Mechanism = "chromosomal_mutation"
+    compensatable: bool = False
+    compensation_rate: Parameter | None = None
+    acquisition: Acquisition = "de_novo"
+    hgt_rate: Parameter | None = None
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    @model_validator(mode="after")
+    def _hgt_rate_required_for_horizontal(self) -> Determinant:
+        if self.acquisition == "horizontal" and self.hgt_rate is None:
+            raise ValueError("hgt_rate is required when acquisition is 'horizontal'")
+        return self
 
 
 def step_deterministic(

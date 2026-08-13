@@ -13,7 +13,7 @@ from pydantic import BaseModel, ConfigDict
 
 from stewardsim.host import Host
 
-RuleKind = Literal["allergy", "contraindication"]
+RuleKind = Literal["allergy", "contraindication", "restriction"]
 
 
 class Rule(BaseModel):
@@ -62,6 +62,8 @@ def _hard_reason(host: Host, drug_id: str, rule: Rule) -> str | None:
         if flag is not None and bool(flag):
             return f"contraindication:{rule.id}"
         return None
+    if rule.kind == "restriction":
+        return f"restriction:{rule.id}"
     return None
 
 

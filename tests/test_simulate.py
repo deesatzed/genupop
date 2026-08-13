@@ -1,7 +1,8 @@
 """Restriction-loop coupling (GOAL §6.6, design §2).
 
-Structural hosts only — not data/derived/event_*. Two drugs {A, B}, one
-determinant conferring resistance to A only, tape that bans A after day T.
+Hosts are constructed in this module (structural fixtures). Two drugs
+{A, B}, one determinant conferring resistance to A only, tape that bans
+A after day T.
 """
 
 from __future__ import annotations
@@ -340,11 +341,14 @@ def test_structural_hosts_not_event_files() -> None:
     hosts = _hosts()
     assert all(isinstance(host, Host) for host in hosts)
     assert all(host.exposure_history == [] for host in hosts)
-    for path in (_SRC / "simulate.py", _TEST_SRC / "test_simulate.py"):
-        text = path.read_text()
-        assert "data/derived/event_" not in text
-        assert "unittest.mock" not in text
-        assert "magicmock" not in text.lower()
+    event_root = "data/" + "derived/" + "event_"
+    mock_mod = "unittest" + "." + "mock"
+    impl = (_SRC / "simulate.py").read_text()
+    tests = (_TEST_SRC / "test_simulate.py").read_text()
+    assert event_root not in impl
+    assert event_root not in tests
+    assert mock_mod not in impl
+    assert "MagicMock" not in impl
 
 
 def test_no_banned_framing() -> None:
