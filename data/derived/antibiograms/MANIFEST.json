@@ -1,0 +1,45 @@
+{
+  "kind": "antibiogram_transcript_manifest",
+  "not_at12": true,
+  "sources": {
+    "2017": {
+      "path": "data/raw/parked_antibiograms/TUH_Antibiogram_2017.pdf",
+      "sha256": "a25351fa7d64612253514944edfe04475b3a698b3139e18ab6b3f42f14208930",
+      "campus_id": "TUH",
+      "campus_as_printed": "TEMPLE UNIVERSITY HOSPITAL",
+      "period_start": "2017-01-01",
+      "period_end": "2017-12-31",
+      "title": "ANTIBIOTIC SUSCEPTIBILITY PROFILE 2017"
+    },
+    "2024": {
+      "path": "data/raw/parked_antibiograms/TUH_Main_Antibiogram_2024.pdf",
+      "sha256": "71d43431b1a7608927752f8fb8912efe2616c1219a3ff3c490ddb7bc74a9a1ac",
+      "campus_id": "TUH-Main",
+      "campus_as_printed": "TEMPLE UNIVERSITY HOSPITAL \u2013 MAIN CAMPUS",
+      "period_start": "2024-01-01",
+      "period_end": "2024-12-31",
+      "title": "ANTIBIOTIC SUSCEPTIBILITY PROFILE 2024"
+    },
+    "2025": {
+      "path": "data/raw/parked_antibiograms/TUH_Main_Antibiogram_2025.pdf",
+      "sha256": "e6c0d06e2764738bc8dbbf1dedeead8b769edd1e034a551b9ccace26db89295c",
+      "campus_id": "TUH-Main",
+      "campus_as_printed": "TEMPLE UNIVERSITY HOSPITAL \u2013 MAIN CAMPUS",
+      "period_start": "2025-01-01",
+      "period_end": "2025-12-31",
+      "title": "ANTIBIOTIC SUSCEPTIBILITY PROFILE 2025"
+    }
+  },
+  "outputs": {
+    "json": {
+      "path": "data/derived/antibiograms/tuh_main_transcript.json",
+      "sha256": "1c2fe0606cbe548a0789847a78c6af205a0580cf026d7615fa69c13c0e0e4fbb",
+      "n_records": 1110
+    },
+    "csv": {
+      "path": "data/derived/antibiograms/tuh_main_transcript.csv",
+      "sha256": "7c871d147ac68e23589c1f207923aaf540954e19b45d0ac927b89e7657b932eb",
+      "n_records": 1110
+    }
+  }
+}
