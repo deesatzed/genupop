@@ -34,9 +34,14 @@ def _jsonable(obj: Any) -> Any:
     return obj
 
 
-def _config_hash(config: StudyConfig) -> str:
+def config_hash(config: StudyConfig) -> str:
+    """SHA-256 of the canonicalized study configuration."""
     canonical = json.dumps(_jsonable(config), sort_keys=True, default=str)
     return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+
+
+def _config_hash(config: StudyConfig) -> str:
+    return config_hash(config)
 
 
 def _git_state() -> tuple[str | None, bool]:
