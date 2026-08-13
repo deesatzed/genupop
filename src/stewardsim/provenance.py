@@ -15,6 +15,8 @@ from pydantic import BaseModel
 from stewardsim.study import StudyConfig
 
 _TRACKED_DISTS = ("stewardsim", "numpy", "scipy", "pydantic", "pyyaml")
+_WORLD_NAME = "world.yaml"
+_HOSTS_NAME = "hosts.yaml"
 
 
 @dataclass(frozen=True)
@@ -34,10 +36,51 @@ def _jsonable(obj: Any) -> Any:
     return obj
 
 
+def _resolve_path(path: str | Path) -> Path:
+    raw = Path(path)
+    return raw if raw.is_absolute() else Path.cwd() / raw
+
+
+def _existing_fixture_files(config: StudyConfig) -> list[Path]:
+    """Return existing fixture files in hash order: world, hosts, tape.
+
+    ``genetic_limit`` studies have no tape; only files that exist are hashed.
+    """
+    found: list[Path] = []
+    if not config.restriction_tape:
+        return found
+    tape = _resolve_path(config.restriction_tape)
+    fixture_dir = tape.parent
+    for name in (_WORLD_NAME, _HOSTS_NAME):
+        candidate = fixture_dir / name
+        if candidate.is_file():
+            found.append(candidate)
+    if tape.is_file():
+        found.append(tape)
+    return found
+
+
+def _canonical_study_json(config: StudyConfig) -> str:
+    return json.dumps(_jsonable(config), sort_keys=True, default=str)
+
+
 def config_hash(config: StudyConfig) -> str:
-    """SHA-256 of the canonicalized study configuration."""
-    canonical = json.dumps(_jsonable(config), sort_keys=True, default=str)
-    return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+    """SHA-256 of canonical study JSON plus fixture file digests.
+
+    Identity is::
+
+        sha256(canonical_study_json || sha256(world.yaml)
+               || sha256(hosts.yaml) || sha256(tape.csv))
+
+    Fixture hashes are over raw file bytes. Missing files (for example a
+    ``genetic_limit`` study with no tape) are omitted. ``git_commit``,
+    ``dirty``, and ``dependency_versions`` are not part of this digest.
+    """
+    hasher = hashlib.sha256()
+    hasher.update(_canonical_study_json(config).encode("utf-8"))
+    for path in _existing_fixture_files(config):
+        hasher.update(hashlib.sha256(path.read_bytes()).digest())
+    return hasher.hexdigest()
 
 
 def _config_hash(config: StudyConfig) -> str:
