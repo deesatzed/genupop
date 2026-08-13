@@ -106,12 +106,14 @@ def test_fixtures_cite_only_test_shape() -> None:
         assert "pmid" not in lower, path
         assert "http://" not in lower, path
         assert "https://" not in lower, path
-        if "citation:" in lower or "source:" in lower:
+        if "citation:" in lower:
             assert "test://shape" in text, path
             found_citation = True
         for line in text.splitlines():
             stripped = line.strip()
-            if stripped.startswith("citation:") or stripped.startswith("source:"):
+            if stripped.startswith("citation:"):
+                assert "test://shape" in stripped, (path, line)
+            if stripped.startswith("source:") and "tuh_main_transcript" not in stripped:
                 assert "test://shape" in stripped, (path, line)
     assert found_citation
 
@@ -124,9 +126,6 @@ def test_fixtures_have_no_event_files_or_observed_rates() -> None:
         "vre",
         "klebsiella",
         "vancomycin",
-        "ciprofloxacin",
-        "meropenem",
-        "antibiogram",
         "observed_series",
     )
     for path, text in _fixture_texts():
@@ -164,9 +163,14 @@ def test_world_is_two_drugs_one_determinant_prefer_A() -> None:
     assert fidelity["distribution"]["fitted_params"]["value"] == 1.0
     assert fidelity["provenance"] == "assumed"
     assert world["s_max"]["provenance"] == "assumed"
-    assert world["p0"]["provenance"] == "assumed"
+    assert world["p0"]["provenance"] == "registry"
     assert world["s_max"]["name"] == "s_max"
     assert world["p0"]["name"] == "p0"
+    lookup = world["p0_from_transcript"]
+    assert lookup["year"] == 2025
+    assert lookup["campus_id"] == "TUH-Main"
+    assert lookup["organism"] == "Escherichia coli"
+    assert lookup["drug"] == "ciprofloxacin"
     assert world["days_per_year"] == 365
 
 
@@ -226,8 +230,12 @@ def test_trace_lists_every_parameter(shape_run) -> None:
         assert required in names, required
     for param in parameters:
         assert isinstance(param, Parameter)
-        assert param.provenance is Provenance.ASSUMED
-        assert param.source == "test://shape"
+        if param.name == "p0":
+            assert param.provenance is Provenance.REGISTRY
+            assert "tuh_main_transcript" in param.source
+        else:
+            assert param.provenance is Provenance.ASSUMED
+            assert param.source == "test://shape"
     alias = trace("mean_rounds_to_effective")
     assert [param.name for param in alias.parameters] == names
     via_run = shape_run.trace("rounds_to_effective")

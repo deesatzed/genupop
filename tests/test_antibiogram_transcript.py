@@ -7,6 +7,8 @@ import hashlib
 import json
 from pathlib import Path
 
+import pytest
+
 ROOT = Path(__file__).resolve().parents[1]
 DERIVED = ROOT / "data" / "derived" / "antibiograms"
 MANIFEST = DERIVED / "MANIFEST.json"
@@ -69,6 +71,23 @@ def test_spot_check_printed_cells() -> None:
     pa_2025 = one("2025", "Pseudomonas aeruginosa", "ciprofloxacin")
     assert pa_2025["percent_susceptible"] == "68"
     assert pa_2025["n_isolates"] == "751"
+
+
+def test_resistance_frequency_from_2025_ecoli_cipro() -> None:
+    from stewardsim.antibiogram import resistance_frequency
+    from stewardsim.policy import point_value
+    from stewardsim.runner import _load_world
+
+    p0 = resistance_frequency(
+        year=2025,
+        campus_id="TUH-Main",
+        organism="Escherichia coli",
+        drug="ciprofloxacin",
+    )
+    assert p0 == pytest.approx(1.0 - 56.0 / 100.0)
+    world = _load_world(ROOT / "tests" / "fixtures" / "shape" / "world.yaml")
+    assert world.p0.provenance.value == "registry"
+    assert point_value(world.p0) == pytest.approx(p0)
 
 
 def test_record_count_matches_payload() -> None:

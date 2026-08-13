@@ -53,11 +53,19 @@ s_max:
     family: point
     fitted_params:
       value: 0.4
+# A stands for ciprofloxacin in this toy. Starting resistance is
+# 1 - (2025 TUH-Main Escherichia coli ciprofloxacin %S)/100.
+# The tape is still a fake ban day, not a Temple restriction.
+p0_from_transcript:
+  year: 2025
+  campus_id: TUH-Main
+  organism: Escherichia coli
+  drug: ciprofloxacin
 p0:
   name: p0
-  provenance: assumed
-  source: test://shape
+  provenance: registry
+  source: data/derived/antibiograms/tuh_main_transcript.csv
   distribution:
     family: point
     fitted_params:
-      value: 0.25
+      value: 0.44

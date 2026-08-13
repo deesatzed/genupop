@@ -24,6 +24,7 @@ from typing import Any
 import numpy as np
 import yaml
 
+from stewardsim.antibiogram import resistance_frequency
 from stewardsim.feasibility import ConstraintSet
 from stewardsim.host import Host
 from stewardsim.importation import Importation
@@ -152,8 +153,34 @@ def _load_world(path: Path) -> WorldSpec:
         determinant=Determinant.model_validate(data["determinant"]),
         constraints=ConstraintSet.model_validate(data["constraints"]),
         s_max=Parameter.model_validate(data["s_max"]),
-        p0=Parameter.model_validate(data["p0"]),
+        p0=_load_p0(data),
     )
+
+
+def _load_p0(data: dict[str, Any]) -> Parameter:
+    """Build p0. Optional ``p0_from_transcript`` overwrites the point value."""
+    spec = data.get("p0")
+    if not isinstance(spec, dict):
+        raise ValueError("world.p0 must be a Parameter mapping")
+    lookup = data.get("p0_from_transcript")
+    if lookup is None:
+        return Parameter.model_validate(spec)
+    if not isinstance(lookup, dict):
+        raise ValueError("world.p0_from_transcript must be a mapping")
+    p0 = resistance_frequency(
+        year=int(lookup["year"]),
+        campus_id=str(lookup["campus_id"]),
+        organism=str(lookup["organism"]),
+        drug=str(lookup["drug"]),
+    )
+    body = dict(spec)
+    dist = dict(body.get("distribution") or {})
+    fitted = dict(dist.get("fitted_params") or {})
+    fitted["value"] = p0
+    dist["family"] = "point"
+    dist["fitted_params"] = fitted
+    body["distribution"] = dist
+    return Parameter.model_validate(body)
 
 
 def _build_hosts(path: Path, *, n: int) -> list[Host]:
