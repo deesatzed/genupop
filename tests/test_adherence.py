@@ -105,6 +105,32 @@ def test_baseline_fidelity_point_value_must_lie_in_unit_interval() -> None:
         _adherence(fidelity=-0.01)
 
 
+def test_driver_weights_must_be_point_and_nonnegative() -> None:
+    with pytest.raises(ValueError):
+        _adherence(fidelity=0.7, drivers={"severity": -0.1})
+    with pytest.raises(ValueError):
+        AdherenceModel(
+            baseline_fidelity=_point("baseline_fidelity", 0.7),
+            deviation_drivers={
+                "severity": Parameter(
+                    name="severity",
+                    provenance=Provenance.ASSUMED,
+                    distribution=DistributionSpec(
+                        family="lognormal",
+                        quantiles={0.05: 0.01, 0.5: 0.05, 0.95: 0.2},
+                    ),
+                    source="test://slice0",
+                )
+            },
+            deviation_target=DeviationTarget(drugs=["drug_x"]),
+        )
+
+
+def test_deviation_target_requires_at_least_one_drug() -> None:
+    with pytest.raises(ValidationError):
+        DeviationTarget(drugs=[])
+
+
 def test_effective_fidelity_equals_baseline_without_driver_state() -> None:
     adherence = _adherence(fidelity=0.7, drivers={"severity": 0.5})
     assert effective_fidelity(_host(), adherence) == pytest.approx(0.7)
@@ -121,7 +147,8 @@ def test_effective_fidelity_falls_when_severity_rises() -> None:
     assert 0.0 <= high <= 1.0
     assert 0.0 <= low <= 1.0
     assert low == pytest.approx(0.7)
-    assert high == pytest.approx(0.2)
+    # gap=0.3, boost=1.5 ⇒ fidelity = 1 - 0.3*1.5 = 0.55
+    assert high == pytest.approx(0.55)
 
 
 def test_effective_fidelity_is_deterministic() -> None:

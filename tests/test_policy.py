@@ -26,6 +26,7 @@ from stewardsim.policy import (
     DeviationTarget,
     Policy,
     PolicyRule,
+    effective_fidelity,
     execute_choice,
     policy_preference,
 )
@@ -166,6 +167,33 @@ def test_at14_fidelity_one_executed_equals_feasible_policy() -> None:
 
     assert host.exposure_history == []
     assert host_allergic.exposure_history == []
+
+
+def test_at14_fidelity_one_with_drivers_never_deviates() -> None:
+    """AT-14: baseline=1.0 is exact even with drivers and high severity."""
+    rng = np.random.default_rng(_SEED)
+    host = _host(comorbidity={"severity": 1.0})
+    policy = _policy(preferred=["drug_a", "drug_b"])
+    constraints = ConstraintSet(hard=[])
+    adherence = _adherence(
+        fidelity=1.0, drivers={"severity": 0.5}, target=["drug_x"]
+    )
+    preferred = policy_preference(policy, host)
+    expected = evaluate(host, preferred, constraints).admissible
+    assert expected == ["drug_a", "drug_b"]
+    assert effective_fidelity(host, adherence) == pytest.approx(1.0)
+    for _ in range(_N_EPISODES):
+        executed = execute_choice(host, policy, constraints, adherence, rng)
+        assert executed == expected
+
+
+def test_execute_choice_requires_numpy_generator() -> None:
+    host = _host()
+    policy = _policy(preferred=["drug_a"])
+    constraints = ConstraintSet(hard=[])
+    adherence = _adherence(fidelity=1.0)
+    with pytest.raises(TypeError):
+        execute_choice(host, policy, constraints, adherence, None)  # type: ignore[arg-type]
 
 
 def test_at14_fidelity_one_preserves_policy_order() -> None:

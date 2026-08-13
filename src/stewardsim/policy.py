@@ -52,7 +52,7 @@ class Policy(BaseModel):
 class DeviationTarget(BaseModel):
     """Ordered substitutes when deviation occurs — not uniform over all drugs."""
 
-    drugs: list[str]
+    drugs: list[str] = Field(min_length=1)
 
     model_config = ConfigDict(extra="forbid", frozen=True)
 
@@ -65,10 +65,14 @@ class AdherenceModel(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
     @model_validator(mode="after")
-    def _fidelity_in_unit_interval(self) -> AdherenceModel:
+    def _fidelity_and_driver_weights(self) -> AdherenceModel:
         value = point_value(self.baseline_fidelity)
         if not 0.0 <= value <= 1.0:
             raise ValueError("baseline_fidelity must be in [0, 1]")
+        for name, weight in self.deviation_drivers.items():
+            w = point_value(weight)
+            if w < 0.0:
+                raise ValueError(f"deviation driver {name!r} weight must be >= 0")
         return self
 
 
@@ -111,12 +115,16 @@ def _driver_state(host: Host, name: str) -> float:
 def effective_fidelity(host: Host, adherence: AdherenceModel) -> float:
     """Deterministic fidelity in [0, 1] given host state and adherence.
 
-    Starts from the baseline_fidelity point value. Each driver subtracts
-    ``host_state * weight``. High severity lowers fidelity. No RNG.
+    ``gap = 1 - baseline``; drivers scale that gap (``boost = 1 + Σ state×weight``).
+    baseline=1.0 ⇒ fidelity=1.0 for any host. High severity lowers fidelity
+    only when baseline < 1. No RNG.
     """
-    fidelity = point_value(adherence.baseline_fidelity)
-    for name, weight in adherence.deviation_drivers.items():
-        fidelity -= _driver_state(host, name) * point_value(weight)
+    gap = 1.0 - point_value(adherence.baseline_fidelity)
+    boost = 1.0 + sum(
+        _driver_state(host, name) * point_value(weight)
+        for name, weight in adherence.deviation_drivers.items()
+    )
+    fidelity = 1.0 - gap * boost
     if fidelity < 0.0:
         return 0.0
     if fidelity > 1.0:
@@ -138,6 +146,10 @@ def execute_choice(
     Otherwise pick feasible ``deviation_target`` drugs, or the first
     remaining admissible preferred drug. Never a uniform global draw.
     """
+    if not isinstance(rng, np.random.Generator):
+        raise TypeError(
+            f"rng must be numpy.random.Generator, got {type(rng).__name__}"
+        )
     preferred = policy_preference(policy, host)
     feasible = evaluate(host, preferred, constraints)
     if not feasible.admissible:
