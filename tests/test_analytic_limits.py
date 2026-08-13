@@ -1,8 +1,12 @@
-"""Analytic-limit acceptance tests (GOAL.md §8): AT-1, AT-2, AT-3, AT-4, AT-7."""
+"""Analytic-limit acceptance tests (GOAL.md §8): AT-1, AT-2, AT-3, AT-4, AT-7, AT-11."""
 
 from __future__ import annotations
 
+import hashlib
+import json
 import math
+import shutil
+from pathlib import Path
 
 import numpy as np
 import pytest
@@ -12,6 +16,32 @@ from stewardsim.pathogen import (
     step_recessive_diploid,
     step_wright_fisher,
 )
+
+_SLICE0_STUDY = Path("configs/studies/slice0_shape.yaml")
+_SHAPE_FIXTURES = Path("tests/fixtures/shape")
+_WALL_CLOCK_KEYS = frozenset(
+    {
+        "created_at",
+        "datetime",
+        "finished_at",
+        "generated_at",
+        "now",
+        "started_at",
+        "timestamp",
+        "wall_clock",
+    }
+)
+
+
+def _assert_no_wall_clock(obj: object) -> None:
+    if isinstance(obj, dict):
+        overlap = _WALL_CLOCK_KEYS.intersection(obj)
+        assert not overlap, f"wall-clock keys in results.json: {sorted(overlap)}"
+        for value in obj.values():
+            _assert_no_wall_clock(value)
+    elif isinstance(obj, list):
+        for item in obj:
+            _assert_no_wall_clock(item)
 
 
 def test_at1_hardy_weinberg_neutral_frequency_constant() -> None:
@@ -108,3 +138,68 @@ def test_at7_positive_cost_decline_bounded_by_fitness_cost() -> None:
             assert decline <= cost
             p = p_next
         assert p < p0
+
+
+def test_at11_two_runs_produce_identical_results_json(tmp_path: Path) -> None:
+    """AT-11: identical (config_hash, seed) ⇒ bit-identical results.json."""
+    from stewardsim.runner import run_study
+
+    run_a = run_study(_SLICE0_STUDY, output_root=tmp_path / "run_a")
+    run_b = run_study(_SLICE0_STUDY, output_root=tmp_path / "run_b")
+    path_a = run_a.outdir / "results.json"
+    path_b = run_b.outdir / "results.json"
+    bytes_a = path_a.read_bytes()
+    bytes_b = path_b.read_bytes()
+    assert bytes_a
+    assert hashlib.sha256(bytes_a).hexdigest() == hashlib.sha256(bytes_b).hexdigest()
+    assert run_a.config_hash == run_b.config_hash
+    assert run_a.outdir != run_b.outdir
+
+    payload = json.loads(bytes_a)
+    _assert_no_wall_clock(payload)
+    canonical = json.dumps(payload, indent=2, sort_keys=True) + "\n"
+    assert bytes_a.decode("utf-8") == canonical
+
+
+def test_at11_config_hash_changes_when_fixture_byte_flips(tmp_path: Path) -> None:
+    """AT-11: fixture file bytes enter config_hash; one flipped byte must change it."""
+    from stewardsim.provenance import config_hash, start_run
+    from stewardsim.study import load_study
+
+    fixtures = tmp_path / "fixtures"
+    fixtures.mkdir()
+    for name in ("world.yaml", "hosts.yaml", "restriction_tape.csv"):
+        shutil.copy(_SHAPE_FIXTURES / name, fixtures / name)
+
+    study_yaml = tmp_path / "study.yaml"
+    study_yaml.write_text(
+        "\n".join(
+            [
+                "study: slice0_shape",
+                "kind: retrodiction",
+                "hosts: {n: 2, years: 1}",
+                f"restriction_tape: {fixtures / 'restriction_tape.csv'}",
+                "seed: 0",
+                "",
+            ]
+        )
+    )
+    cfg = load_study(study_yaml)
+    hash_before = config_hash(cfg)
+    ctx_a = start_run(cfg, seed=0, outdir=tmp_path / "a")
+    assert ctx_a.config_hash == hash_before
+
+    world = fixtures / "world.yaml"
+    raw = bytearray(world.read_bytes())
+    marker = b"Discrete"
+    idx = raw.find(marker)
+    assert idx >= 0, "expected comment marker in world.yaml so the flip stays parse-irrelevant"
+    raw[idx] ^= 0x01
+    world.write_bytes(bytes(raw))
+    assert (fixtures / "world.yaml").read_bytes() != (_SHAPE_FIXTURES / "world.yaml").read_bytes()
+
+    hash_after = config_hash(cfg)
+    assert hash_after != hash_before
+    ctx_b = start_run(cfg, seed=0, outdir=tmp_path / "b")
+    assert ctx_b.config_hash == hash_after
+    assert ctx_b.config_hash != ctx_a.config_hash
