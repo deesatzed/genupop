@@ -160,9 +160,9 @@ Banned in `src/` and `tests/`: “inappropriate prescribing” as a clinician at
 
 ### Tests (no event numbers)
 
-Green in Slice-0: AT-1, 2, 3, 4, 7, 8.1, 8.2, 11, 13.1, 13.2, 14.
+Green in Slice-0: AT-1, 2, 3, 4, 7, 8.1, 8.2, 11, 13.2, 14.
 
-`not_run` or explicit `BLOCK`: AT-5, 6, 8.3, 9, 10, 12.
+`not_run` or explicit `BLOCK`: AT-5, 6, 8.3, 9, 10, 12, 13.1. AT-13.1 stays `not_run` until the ≥10⁶-episode no-violation campaign exists; parent AT-13 is not pass while 13.1 is `not_run`. An allergy unit test is not that campaign.
 
 **Reporting gate:** GOAL §8 — if AT-1 through AT-5 fail, no scientific result may be reported. AT-5 is `not_run` in Slice-0. `stewardsim report` refuses Tier 2/3 until AT-5 is green or a new `DECISIONS.md` entry changes the gate. Fixture directories are not paper results.
 

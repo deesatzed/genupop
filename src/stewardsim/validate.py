@@ -147,7 +147,7 @@ _AT_ORDER: tuple[str, ...] = (
 )
 
 _SLICE0_NOT_RUN: frozenset[str] = frozenset(
-    {"AT-5", "AT-6", "AT-8.3", "AT-9", "AT-10"}
+    {"AT-5", "AT-6", "AT-8.3", "AT-9", "AT-10", "AT-13", "AT-13.1"}
 )
 
 _SUITE: dict[str, tuple[str, ...]] = {
@@ -168,13 +168,6 @@ _SUITE: dict[str, tuple[str, ...]] = {
     ),
     "AT-11": (
         "tests/test_analytic_limits.py::test_at11_two_runs_produce_identical_results_json",
-    ),
-    "AT-13": (
-        "tests/test_feasibility.py::test_allergy_to_drug_a_excludes_a_with_reason",
-        "tests/test_feasibility.py::test_seeded_contraindication_of_only_policy_drug_is_conflict",
-    ),
-    "AT-13.1": (
-        "tests/test_feasibility.py::test_allergy_to_drug_a_excludes_a_with_reason",
     ),
     "AT-13.2": (
         "tests/test_feasibility.py::test_seeded_contraindication_of_only_policy_drug_is_conflict",
@@ -220,6 +213,9 @@ def evaluate_at_gate() -> dict[str, str]:
 
     Does not write a gate file and does not invent AT-12 figures.
     AT-5 / AT-6 / AT-8.3 / AT-9 / AT-10 stay ``not_run`` in Slice-0.
+    AT-13.1 stays ``not_run`` until a ≥10^6-episode no-violation
+    campaign exists; parent AT-13 is therefore also ``not_run``.
+    An allergy unit test is not that campaign.
     """
     tree = _package_tree()
     gate: dict[str, str] = {}

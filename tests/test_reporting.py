@@ -37,8 +37,6 @@ _GREEN = (
     "AT-8.1",
     "AT-8.2",
     "AT-11",
-    "AT-13",
-    "AT-13.1",
     "AT-13.2",
     "AT-14",
 )
@@ -49,6 +47,8 @@ _NOT_RUN_OR_BLOCK = (
     "AT-9",
     "AT-10",
     "AT-12",
+    "AT-13",
+    "AT-13.1",
 )
 _REGISTRY_TYPES = (Policy, AdherenceModel, Determinant, Importation)
 _BANNED_NET = (
@@ -266,6 +266,8 @@ def test_at_gate_marks_slice0_not_run_or_block_and_known_green(
     for at_id in _NOT_RUN_OR_BLOCK:
         assert gate[at_id] in {"not_run", "BLOCK"}, at_id
     assert gate["AT-5"] != "pass"
+    assert gate["AT-13.1"] == "not_run"
+    assert gate["AT-13"] != "pass"
     assert gate["AT-12"] in {"not_run", "BLOCK"}
     assert not isinstance(gate["AT-12"], (int, float))
 
