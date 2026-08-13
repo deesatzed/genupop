@@ -1,0 +1,10 @@
+hard:
+  - id: allergy_drug_a
+    kind: allergy
+    drug_id: drug_a
+  - id: cx_drug_b
+    kind: contraindication
+    drug_id: drug_b
+soft: []
+sources:
+  - test://slice0
