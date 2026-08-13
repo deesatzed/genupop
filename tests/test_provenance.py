@@ -15,3 +15,22 @@ def test_elicited_id_must_resolve(tmp_path, monkeypatch):
             source="panel",
             elicitation_id="missing_record",
         )
+
+
+def test_elicited_id_resolves_when_record_exists(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    record = tmp_path / "configs" / "elicitation" / "panel1.yaml"
+    record.parent.mkdir(parents=True)
+    record.write_text("citation: test://elicitation\n")
+    param = Parameter(
+        name="hgt_rate",
+        provenance=Provenance.ELICITED,
+        distribution=DistributionSpec(
+            family="lognormal",
+            quantiles={0.05: 1e-6, 0.5: 1e-4, 0.95: 1e-2},
+        ),
+        source="panel",
+        elicitation_id="panel1",
+    )
+    assert param.elicitation_id == "panel1"
+    assert param.provenance is Provenance.ELICITED
