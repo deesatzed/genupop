@@ -1,7 +1,11 @@
 """Restriction-loop coupling driver (GOAL §6.6, design §2).
 
-Daily discrete clock. Every supplied host needs therapy every day (Slice-0
-structural incidence). For each day ``t`` and each host:
+Daily discrete clock. Slice-0 incidence is daily: every supplied host
+needs therapy every day and receives 1 dose-day of the first chosen
+drug. ``Policy.duration`` is stored on the policy but is not applied —
+it is not a course length and does not change loop length or dose-days.
+
+For each day ``t`` and each host:
 
 1. ``restricted = tape.play(t)`` — half-open ``[t0, t1)``.
 2. Restricted drugs are extra hard constraints (``kind="restriction"``).
@@ -56,21 +60,22 @@ class SimulateResult(BaseModel):
     """Primary Slice-0 loop outputs (design §2).
 
     ``frequencies[t]`` is ``p`` at the end of day ``t``.
-    ``mean_rounds_to_effective`` is the population mean of per-treatment
-    ``rounds_to_effective`` (also exposed as ``rounds_to_effective``).
+    ``rounds_to_effective`` is the population mean of per-treatment
+    rounds (serialized; Task 14 output name). ``mean_rounds_to_effective``
+    is a property alias of that field.
     """
 
     frequencies: list[float]
-    mean_rounds_to_effective: float
+    rounds_to_effective: float
     conflict_log: list[dict]
     dose_days: dict[str, list[float]]
 
     model_config = ConfigDict(extra="forbid", frozen=True)
 
     @property
-    def rounds_to_effective(self) -> float:
-        """Population mean rounds to effective therapy."""
-        return self.mean_rounds_to_effective
+    def mean_rounds_to_effective(self) -> float:
+        """Population mean rounds to effective therapy (alias)."""
+        return self.rounds_to_effective
 
 
 def compose_restrictions(
@@ -80,7 +85,7 @@ def compose_restrictions(
     if not restricted:
         return constraints
     extra = [
-        Rule(id=f"restriction:{drug_id}", kind="restriction", drug_id=drug_id)
+        Rule(id=drug_id, kind="restriction", drug_id=drug_id)
         for drug_id in sorted(restricted)
     ]
     return ConstraintSet(
@@ -155,6 +160,10 @@ def simulate(
 ) -> SimulateResult:
     """Run the daily restriction loop on structural hosts.
 
+    Slice-0 incidence is daily: every host is treated every day of
+    ``horizon`` with 1 dose-day. ``Policy.duration`` is not read and does
+    not change the number of days, who is treated, or dose-days.
+
     ``importation`` is accepted and unused (rate-0 seam). ``rng`` must be
     a seeded ``numpy.random.Generator``.
     """
@@ -214,7 +223,7 @@ def simulate(
     mean_rounds = float(sum(rounds) / len(rounds)) if rounds else 0.0
     return SimulateResult(
         frequencies=frequencies,
-        mean_rounds_to_effective=mean_rounds,
+        rounds_to_effective=mean_rounds,
         conflict_log=conflict_log,
         dose_days=dose_days,
     )

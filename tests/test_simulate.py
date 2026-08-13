@@ -56,11 +56,13 @@ def _hosts(n: int = 3) -> list[Host]:
     return [_host(host_id=i + 1) for i in range(n)]
 
 
-def _policy(preferred: list[str] | None = None) -> Policy:
+def _policy(
+    preferred: list[str] | None = None, *, duration: float = 1.0
+) -> Policy:
     return Policy(
         id="slice0_prefer_A",
         rules=[PolicyRule(preferred=list(preferred or ["A", "B"]))],
-        duration=_point("duration", 1.0),
+        duration=_point("duration", duration),
     )
 
 
@@ -154,6 +156,8 @@ def test_after_T_feasibility_treats_A_as_inadmissible() -> None:
     banned = evaluate(host, ["A", "B"], at_T)
     assert "A" not in banned.admissible
     assert "A" in banned.excluded
+    assert banned.excluded["A"] == "restriction:A"
+    assert banned.excluded["A"].count("restriction:") == 1
     assert "B" in banned.admissible
     assert banned.conflict is False
 
@@ -175,15 +179,19 @@ def test_rounds_to_effective_present_next_to_frequencies() -> None:
     result = _run()
     fields = list(SimulateResult.model_fields)
     assert "frequencies" in fields
-    assert "mean_rounds_to_effective" in fields
-    assert "rounds_to_effective" in fields or hasattr(result, "rounds_to_effective")
+    assert "rounds_to_effective" in fields
     freq_i = fields.index("frequencies")
-    mean_i = fields.index("mean_rounds_to_effective")
-    assert abs(freq_i - mean_i) == 1
+    rounds_i = fields.index("rounds_to_effective")
+    assert abs(freq_i - rounds_i) == 1
     assert isinstance(result.frequencies, list)
     assert len(result.frequencies) == _HORIZON
+    assert isinstance(result.rounds_to_effective, float)
     assert isinstance(result.mean_rounds_to_effective, float)
     assert result.rounds_to_effective == result.mean_rounds_to_effective
+    dumped = result.model_dump()
+    assert "rounds_to_effective" in dumped
+    assert dumped["rounds_to_effective"] == result.rounds_to_effective
+    assert dumped["rounds_to_effective"] == result.mean_rounds_to_effective
 
 
 def test_conflict_log_is_a_list() -> None:
@@ -289,6 +297,21 @@ def test_importation_accepted_as_typed_argument() -> None:
     assert len(result.frequencies) == _HORIZON
 
 
+def test_policy_duration_does_not_change_daily_loop() -> None:
+    """Slice-0 incidence is daily; Policy.duration is stored, not applied."""
+    daily = _run(policy=_policy(duration=1.0))
+    week = _run(policy=_policy(duration=7.0))
+    assert len(daily.frequencies) == _HORIZON
+    assert len(week.frequencies) == _HORIZON
+    assert daily.frequencies == week.frequencies
+    assert daily.dose_days == week.dose_days
+    assert daily.rounds_to_effective == week.rounds_to_effective
+    n_hosts = 3
+    assert daily.dose_days["A"][:_T] == [float(n_hosts)] * _T
+    source = inspect.getsource(simulate)
+    assert "point_value(policy.duration)" not in source
+
+
 def test_simulate_requires_numpy_generator() -> None:
     with pytest.raises(TypeError):
         simulate(
@@ -386,7 +409,7 @@ def test_simulate_result_is_frozen() -> None:
     with pytest.raises(ValidationError):
         SimulateResult(
             frequencies=[0.1],
-            mean_rounds_to_effective=1.0,
+            rounds_to_effective=1.0,
             conflict_log=[],
             dose_days={"A": [0.0]},
             invented=True,  # type: ignore[call-arg]
