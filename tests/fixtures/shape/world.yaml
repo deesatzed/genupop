@@ -1,0 +1,63 @@
+citation: test://shape
+# Discrete horizon = int(hosts.years * days_per_year). Slice-0 uses 365.
+days_per_year: 365
+drugs:
+  - id: A
+  - id: B
+constraints:
+  hard: []
+  soft: []
+  sources:
+    - test://shape
+policy:
+  id: prefer_A
+  rules:
+    - preferred: [A, B]
+  reserve: []
+  duration:
+    name: policy.duration
+    provenance: assumed
+    source: test://shape
+    distribution:
+      family: point
+      fitted_params:
+        value: 1.0
+adherence:
+  baseline_fidelity:
+    name: adherence.baseline_fidelity
+    provenance: assumed
+    source: test://shape
+    distribution:
+      family: point
+      fitted_params:
+        value: 1.0
+  deviation_drivers: {}
+  deviation_target:
+    drugs: [B]
+determinant:
+  id: det_A
+  confers_resistance_to: [A]
+  fitness_cost:
+    name: determinant.fitness_cost
+    provenance: assumed
+    source: test://shape
+    distribution:
+      family: point
+      fitted_params:
+        value: 0.0
+s_max:
+  name: s_max
+  provenance: assumed
+  source: test://shape
+  distribution:
+    family: point
+    fitted_params:
+      value: 0.4
+p0:
+  name: p0
+  provenance: assumed
+  source: test://shape
+  distribution:
+    family: point
+    fitted_params:
+      value: 0.25

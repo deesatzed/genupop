@@ -1,0 +1,8 @@
+citation: test://shape
+# Structural host template. Count comes from study hosts.n; this file
+# supplies empty exposure history only. No observed rates.
+template:
+  exposure_history: []
+  demographics: {}
+  comorbidity: {}
+  admission_source: community

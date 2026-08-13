@@ -1,0 +1,6 @@
+study: slice0_shape
+kind: retrodiction
+hosts: {n: 200, years: 1}
+restriction_tape: tests/fixtures/shape/restriction_tape.csv
+seed: 0
+outputs: [rounds_to_effective, determinant_trajectories, conflict_log]
