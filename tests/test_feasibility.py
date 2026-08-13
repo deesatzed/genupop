@@ -48,6 +48,11 @@ def test_seeded_contraindication_of_only_policy_drug_is_conflict() -> None:
     reason = result.excluded["drug_a"]
     assert reason
     assert "contraindicat" in reason.lower()
+    assert result.log_entry is not None
+    assert result.log_entry["host_id"] == 2
+    assert result.log_entry["preferred_drugs"] == ["drug_a"]
+    assert result.log_entry["excluded"] == result.excluded
+    assert set(result.log_entry["excluded"]) == {"drug_a"}
 
 
 def test_oracle_is_pure_function_no_rng() -> None:
@@ -93,6 +98,9 @@ def test_conflict_does_not_invent_a_drug() -> None:
     result = evaluate(host, ["drug_a"], constraints)
     assert result.admissible == []
     assert set(result.excluded) == {"drug_a"}
+    assert result.log_entry is not None
+    assert set(result.log_entry["excluded"]) == {"drug_a"}
+    assert result.log_entry["preferred_drugs"] == ["drug_a"]
 
 
 def test_allergy_rule_does_not_fire_without_listed_allergy() -> None:
@@ -135,3 +143,37 @@ def test_slice0_yaml_has_structural_allergy_and_contraindication() -> None:
     assert constraints.sources == [] or all(
         source.startswith("test://") for source in constraints.sources
     )
+
+
+def test_contraindication_absent_flag_admits_drug() -> None:
+    host = _host()
+    constraints = ConstraintSet(
+        hard=[Rule(id="cx_drug_b", kind="contraindication", drug_id="drug_b")],
+    )
+    result = evaluate(host, ["drug_b"], constraints)
+    assert result.admissible == ["drug_b"]
+    assert "drug_b" not in result.excluded
+    assert result.conflict is False
+    assert result.log_entry is None
+
+
+def test_slice0_yaml_default_host_admits_drug_b() -> None:
+    host = _host()
+    constraints = load_constraints(_SLICE0_CONSTRAINTS)
+    result = evaluate(host, ["drug_a", "drug_b"], constraints)
+    assert "drug_b" in result.admissible
+    assert "drug_b" not in result.excluded
+    assert result.conflict is False
+    assert result.log_entry is None
+
+
+def test_empty_preferred_drugs_is_not_conflict() -> None:
+    host = _host(comorbidity={"cx_drug_a": True})
+    constraints = ConstraintSet(
+        hard=[Rule(id="cx_drug_a", kind="contraindication", drug_id="drug_a")],
+    )
+    result = evaluate(host, [], constraints)
+    assert result.conflict is False
+    assert result.admissible == []
+    assert result.excluded == {}
+    assert result.log_entry is None

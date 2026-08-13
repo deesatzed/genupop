@@ -36,6 +36,7 @@ class FeasibilityResult(BaseModel):
     admissible: list[str]
     excluded: dict[str, str]
     conflict: bool
+    log_entry: dict | None = None
 
     model_config = ConfigDict(extra="forbid", frozen=True)
 
@@ -58,7 +59,7 @@ def _hard_reason(host: Host, drug_id: str, rule: Rule) -> str | None:
         return None
     if rule.kind == "contraindication":
         flag = host.comorbidity.get(rule.id)
-        if flag is None or bool(flag):
+        if flag is not None and bool(flag):
             return f"contraindication:{rule.id}"
         return None
     return None
@@ -71,8 +72,10 @@ def evaluate(
 ) -> FeasibilityResult:
     """Return admissible preferred drugs after hard constraints.
 
-    ``preferred_drugs`` is the policy's ordered list. Conflict if hard
-    constraints admit none of them. Soft rules are unused in Slice-0.
+    ``preferred_drugs`` is the policy's ordered list. Conflict if the
+    policy selected at least one drug and hard constraints admit none of
+    them. An empty policy list is not a guideline conflict. Soft rules
+    are unused in Slice-0.
     """
     admissible: list[str] = []
     excluded: dict[str, str] = {}
@@ -90,10 +93,19 @@ def evaluate(
             excluded[drug_id] = reason
         else:
             admissible.append(drug_id)
+    conflict = bool(preferred_drugs) and len(admissible) == 0
+    log_entry = None
+    if conflict:
+        log_entry = {
+            "host_id": host.id,
+            "preferred_drugs": list(preferred_drugs),
+            "excluded": dict(excluded),
+        }
     return FeasibilityResult(
         admissible=admissible,
         excluded=excluded,
-        conflict=len(admissible) == 0,
+        conflict=conflict,
+        log_entry=log_entry,
     )
 
 
