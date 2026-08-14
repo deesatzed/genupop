@@ -127,3 +127,36 @@ policy space tractable.
 
 The conflict log remains a deliverable in its own right (`THEORY.md §7`) and may be
 published separately.
+
+---
+
+## ADR-004 — Scenarios are the product; AT-12 is an optional back-test
+
+**Date:** 2026-08-14
+**Status:** Accepted
+
+### Context
+
+AT-12 was written as a paper kill criterion: match a *documented historical*
+restriction with independently locked parameters. The operator's purpose is
+Antibiotic Stewardship Committee what-ifs: different restriction dates, drugs,
+and starting antibiograms. Treating AT-12 `BLOCK` as "you may not model a
+restriction" blocked that purpose.
+
+### Decision
+
+1. **What-if restrictions are in scope.** Choosing a ban day/date is a lever,
+   not a missing event file.
+2. **AT-12 does not gate `stewardsim scenario`.** `BLOCK` means "no historical
+   back-test is available," not "do not run."
+3. **Committee output must show both sides:** resistance **and** empiric
+   adequacy (rounds / first-line miss), with vs without the restriction.
+   Resistance-only cards are a defect (GOAL §12.2).
+4. **AT-12 remains optional.** If a real past formulary change is later named,
+   lock parameters first, then compare. Until then, every number is a
+   conditional scenario, not a retrodiction.
+
+### Consequences
+
+Scenario CLI is the stewardship surface. Paper-style AT-12 can wait. Labels
+must say the run is not a history-match.

@@ -56,7 +56,13 @@ def test_ban_stops_primary_and_moves_end_frequency() -> None:
     assert after == 0.0
     assert sum(cmp.control.dose_days["ciprofloxacin"][20:]) > 0.0
     assert cmp.banned.frequencies[-1] < cmp.control.frequencies[-1]
-    assert "Not a history-match" in format_compare(cmp)
+    card = format_compare(cmp)
+    assert "Not a history-match" in card
+    assert "mean rounds to effective WITH restriction" in card
+    assert "first-line miss share WITH restriction" in card
+    assert cmp.first_line_miss_pct(cmp.banned) <= cmp.first_line_miss_pct(
+        cmp.control
+    )
 
 
 def test_2017_uses_tuh_campus() -> None:

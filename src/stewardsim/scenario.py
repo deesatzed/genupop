@@ -120,6 +120,28 @@ class ScenarioCompare:
         idx = min(self.ban_day, len(self.control.frequencies)) - 1
         return self.control.frequencies[idx] > 0.99
 
+    def first_line_miss_pct(self, result: SimulateResult) -> float:
+        """Share of primary-drug treatment-days when p > 0.5 at dosing.
+
+        Scoring uses start-of-day resistance (p0, then yesterday's end p),
+        matching ``simulate``'s rounds rule.
+        """
+        doses = result.dose_days.get(self.drug, [])
+        if not result.frequencies or not doses:
+            return 0.0
+        missed = 0.0
+        given = 0.0
+        for t, dose in enumerate(doses):
+            if dose <= 0.0:
+                continue
+            p = self.p0 if t == 0 else result.frequencies[t - 1]
+            given += dose
+            if p > 0.5:
+                missed += dose
+        if given == 0.0:
+            return 0.0
+        return 100.0 * missed / given
+
 
 def run_scenario(
     *,
@@ -232,24 +254,39 @@ def run_scenario(
 
 def format_compare(cmp: ScenarioCompare) -> str:
     ban_label = "none" if cmp.ban_day is None else f"day {cmp.ban_day} to end"
+    miss_ban = cmp.first_line_miss_pct(cmp.banned)
+    miss_ctl = cmp.first_line_miss_pct(cmp.control)
     lines = [
+        "STEWARDSHIP CARD (conditional what-if, not a prediction)",
         f"start: {cmp.year} {cmp.campus_id} {cmp.organism} vs {cmp.drug}",
         f"starting resistant: {cmp.start_resistant_pct:.1f}%",
-        f"s_max: {cmp.s_max}",
-        f"ban: {ban_label}",
-        f"end resistant WITH ban: {cmp.end_banned_pct:.1f}%",
-        f"end resistant NO ban:   {cmp.end_control_pct:.1f}%",
-        f"difference (ban minus no-ban): {cmp.delta_points:+.1f} points",
+        f"s_max: {cmp.s_max} (assumed speed; not estimated from Temple)",
+        f"restriction: {ban_label}",
+        "",
+        "Resistance at end of run",
+        f"  WITH restriction: {cmp.end_banned_pct:.1f}%",
+        f"  NO restriction:   {cmp.end_control_pct:.1f}%",
+        f"  difference:       {cmp.delta_points:+.1f} points",
+        "",
+        "Empiric first-line (same page as resistance — required)",
+        f"  mean rounds to effective WITH restriction: {cmp.banned.rounds_to_effective:.2f}",
+        f"  mean rounds to effective NO restriction:   {cmp.control.rounds_to_effective:.2f}",
+        f"  first-line miss share WITH restriction: {miss_ban:.1f}%",
+        f"  first-line miss share NO restriction:   {miss_ctl:.1f}%",
     ]
     if cmp.ban_day is not None:
         after = sum(cmp.banned.dose_days.get(cmp.drug, [])[cmp.ban_day :])
-        lines.append(f"{cmp.drug} dose-days after ban: {after:.0f}")
+        lines.append(f"  {cmp.drug} dose-days after restriction: {after:.0f}")
     if cmp.saturated_before_ban():
         lines.append(
-            "WARNING: no-ban resistance already >99% before the ban day; "
+            "WARNING: no-restriction resistance already >99% before the ban day; "
             "the comparison may look flat. Lower --s-max or ban earlier."
         )
-    lines.append("Not a history-match. Not a Temple restriction event.")
+    lines.append("")
+    lines.append(
+        "Not a history-match. AT-12 back-test is optional and does not "
+        "block this run."
+    )
     return "\n".join(lines) + "\n"
 
 
