@@ -2,6 +2,7 @@
 
 ``stewardsim`` / ``stewardsim --version`` prints the package version.
 ``stewardsim study <yaml>`` runs a fixture study.
+``stewardsim scenario`` runs a what-if start+ban pair (not AT-12).
 ``stewardsim odd`` / ``stewardsim trace`` emit live Parameter skeletons.
 ``stewardsim validate`` writes the AT gate file.
 ``stewardsim report`` refuses Tier 2/3 while AT-5 is not green.
@@ -10,6 +11,7 @@
 from __future__ import annotations
 
 import sys
+from pathlib import Path
 
 
 def _parse_study_args(rest: list[str]) -> tuple[str, str]:
@@ -25,6 +27,48 @@ def _parse_study_args(rest: list[str]) -> tuple[str, str]:
         else:
             raise SystemExit(usage)
     return yaml_path, output_root
+
+
+def _run_scenario_cli(rest: list[str]) -> None:
+    usage = (
+        "usage: stewardsim scenario --year 2017|2024|2025 "
+        "--bug NAME --drug NAME --ban none|DAY [--s-max 0.05] [--output-root DIR]"
+    )
+    flags: dict[str, str] = {}
+    i = 0
+    while i < len(rest):
+        key = rest[i]
+        if not key.startswith("--") or i + 1 >= len(rest):
+            raise SystemExit(usage)
+        flags[key[2:].replace("-", "_")] = rest[i + 1]
+        i += 2
+    required = {"year", "bug", "drug", "ban"}
+    if not required.issubset(flags):
+        raise SystemExit(usage)
+    from stewardsim.scenario import DEFAULT_S_MAX, format_compare, run_scenario, write_compare
+
+    try:
+        year = int(flags["year"])
+        s_max = float(flags["s_max"]) if "s_max" in flags else DEFAULT_S_MAX
+        cmp = run_scenario(
+            year=year,
+            bug=flags["bug"],
+            drug=flags["drug"],
+            ban=flags["ban"],
+            s_max=s_max,
+        )
+    except (ValueError, FileNotFoundError) as exc:
+        raise SystemExit(str(exc)) from exc
+    root = flags.get("output_root", "output")
+    ban_slug = "none" if cmp.ban_day is None else str(cmp.ban_day)
+    outdir = (
+        Path(root)
+        / "scenario"
+        / f"{cmp.year}_{cmp.drug}_ban{ban_slug}"
+    )
+    write_compare(cmp, outdir)
+    print(format_compare(cmp), end="")
+    print(outdir)
 
 
 def _parse_report_args(rest: list[str]) -> int | None:
@@ -48,6 +92,9 @@ def main(argv: list[str] | None = None) -> None:
     args = list(sys.argv[1:] if argv is None else argv)
     if not args or args[0] in {"--version", "-V"}:
         print(__version__)
+        return
+    if args[0] == "scenario":
+        _run_scenario_cli(args[1:])
         return
     if args[0] == "study":
         yaml_path, output_root = _parse_study_args(args[1:])
