@@ -91,5 +91,10 @@ def test_cli_scenario_writes_compare(tmp_path, capsys) -> None:
     out = capsys.readouterr().out
     assert "starting resistant: 44.0%" in out
     assert "Not a history-match" in out
-    compare = tmp_path / "scenario" / "2025_ciprofloxacin_ban10" / "compare.txt"
+    compare = (
+        tmp_path
+        / "scenario"
+        / "2025_escherichia_coli_ciprofloxacin_ban10"
+        / "compare.txt"
+    )
     assert compare.is_file()

@@ -61,10 +61,11 @@ def _run_scenario_cli(rest: list[str]) -> None:
         raise SystemExit(str(exc)) from exc
     root = flags.get("output_root", "output")
     ban_slug = "none" if cmp.ban_day is None else str(cmp.ban_day)
+    bug_slug = cmp.organism.lower().replace(" ", "_").replace(".", "")
     outdir = (
         Path(root)
         / "scenario"
-        / f"{cmp.year}_{cmp.drug}_ban{ban_slug}"
+        / f"{cmp.year}_{bug_slug}_{cmp.drug}_ban{ban_slug}"
     )
     write_compare(cmp, outdir)
     print(format_compare(cmp), end="")
